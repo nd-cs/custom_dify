@@ -2,6 +2,7 @@ from urllib import parse
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignore
+from werkzeug.exceptions import Forbidden
 
 import services
 from configs import dify_config
@@ -92,6 +93,10 @@ class MemberCancelInviteApi(Resource):
         if member is None:
             abort(404)
         else:
+            if not current_user.is_admin_or_owner:
+                raise Forbidden("You do not have permission to delete members.")
+            if member.current_tenant_id == current_user.current_tenant_id and member.current_role == "admin" and not current_user.is_admin:
+                raise Forbidden("Only owners can delete administrators.")
             try:
                 TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
             except services.errors.account.CannotOperateSelfError as e:
